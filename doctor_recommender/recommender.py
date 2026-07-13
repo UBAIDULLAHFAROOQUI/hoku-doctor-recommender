@@ -1,25 +1,29 @@
 """
 AI Doctor Recommender — core logic.  (Ubaid Ullah Farooqui)
 
-Day 1 scope: a static symptom -> specialist map and a matcher that turns a
-list of symptoms into a recommended specialist. No database, no OpenAI yet.
+Day 2: find_doctors() now queries the REAL `doctors` table via the repository.
+The static symptom->specialist map still decides WHICH specialist; the DB
+decides WHICH doctors of that specialist to return.
 
-Roadmap this file follows:
-  Day 2  -> query the real `doctors` table instead of SAMPLE_DOCTORS
-  Day 3  -> replace map lookup with an OpenAI classifier (map = fallback)
+Roadmap:
+  Day 3  -> replace the map with an OpenAI classifier (map = fallback)
   Day 4  -> urgency scoring from red-flag symptoms
-  Day 5  -> availability matching against `doctor_availability`
+  Day 5  -> real availability window from doctor_availability
 """
 
 from __future__ import annotations
 
+import logging
+
+from doctor_recommender.repository import get_doctors_by_specialty
+
+logger = logging.getLogger("doctor_recommender")
+
 # The six specialties that exist in Hoku's `doctors` table (brief §1.2).
-# Anything unmatched falls back to General Physician.
 FALLBACK_SPECIALIST = "General Physician"
 
-# Static symptom -> specialist map. Keys are lowercase single keywords that
-# we look for inside each symptom string, so "bad chest pain" still matches
-# "chest pain". Ordered roughly specific -> general.
+# Static symptom -> specialist map. Keys are lowercase keywords matched inside
+# each symptom string, so "bad chest pain" still matches "chest pain".
 SYMPTOM_SPECIALTY_MAP: dict[str, str] = {
     # Cardiologist
     "chest pain": "Cardiologist",
@@ -53,46 +57,9 @@ SYMPTOM_SPECIALTY_MAP: dict[str, str] = {
     "fatigue": "General Physician",
 }
 
-# Day-1 stand-in for the `doctors` table. Replaced by a real query on Day 2.
-SAMPLE_DOCTORS: dict[str, list[dict]] = {
-    "Cardiologist": [
-        {
-            "name": "Dr. Ali Khan",
-            "specialty": "Cardiologist",
-            "experience": "10 years",
-            "hospital": "Hoku Health Care",
-            "availability": "Monday-Friday, 9AM-5PM",
-        }
-    ],
-    "General Physician": [
-        {
-            "name": "Dr. Sara Ahmed",
-            "specialty": "General Physician",
-            "experience": "7 years",
-            "hospital": "Hoku Health Care",
-            "availability": "Monday-Saturday, 10AM-6PM",
-        }
-    ],
-    "Dermatologist": [
-        {
-            "name": "Dr. Hina Raza",
-            "specialty": "Dermatologist",
-            "experience": "8 years",
-            "hospital": "Hoku Health Care",
-            "availability": "Tuesday-Saturday, 11AM-4PM",
-        }
-    ],
-}
-
 
 def match_specialist(symptoms: list[str]) -> str:
-    """
-    Return the best-matching specialist for a list of symptom strings.
-
-    Scans each symptom for any keyword in SYMPTOM_SPECIALTY_MAP. The first
-    keyword hit wins (map is ordered specific -> general). Falls back to
-    General Physician when nothing matches, so we never return None.
-    """
+    """Return the best-matching specialist, falling back to General Physician."""
     for symptom in symptoms:
         text = symptom.strip().lower()
         for keyword, specialist in SYMPTOM_SPECIALTY_MAP.items():
@@ -101,25 +68,34 @@ def match_specialist(symptoms: list[str]) -> str:
     return FALLBACK_SPECIALIST
 
 
-def find_doctors(specialist: str) -> list[dict]:
+def find_doctors(specialist: str) -> tuple[list[dict], str]:
     """
-    Day 1: return sample doctors for the specialist from SAMPLE_DOCTORS.
-    Day 2: this becomes a PostgreSQL query on the `doctors` table.
+    Fetch real doctors for a specialist from the database.
+
+    Returns (doctors, note). `note` explains an empty list to the patient:
+      - DB reachable but no match   -> "no doctor currently available"
+      - DB unreachable (dev/outage) -> service-unavailable message
+    We NEVER invent a doctor to fill an empty result.
     """
-    return SAMPLE_DOCTORS.get(specialist, SAMPLE_DOCTORS[FALLBACK_SPECIALIST])
+    try:
+        doctors = get_doctors_by_specialty(specialist)
+    except Exception as exc:  # DB down / not yet reachable
+        logger.warning("Doctor DB unavailable (%s): %s", specialist, exc)
+        return [], "Doctor directory is temporarily unavailable. Please try again shortly."
+
+    if not doctors:
+        return [], f"No {specialist} is currently available. Please check back soon."
+    return doctors, ""
 
 
 def recommend(symptoms: list[str], location: str | None = None) -> dict:
-    """
-    Build the full recommendation response (brief §10.4).
-
-    urgency is a Day-1 placeholder — real red-flag scoring lands on Day 4.
-    """
+    """Build the full recommendation response (brief §10.4)."""
     specialist = match_specialist(symptoms)
-    doctors = find_doctors(specialist)
+    doctors, note = find_doctors(specialist)
     return {
         "recommendedSpecialist": specialist,
         "doctors": doctors,
+        "note": note,  # empty string when doctors were found
         # Placeholder until Day 4 urgency scoring:
         "urgency": "medium - Please book an appointment soon",
         "disclaimer": "Please consult a doctor for proper diagnosis.",
