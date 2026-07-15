@@ -8,6 +8,7 @@ Part of the Hoku Health Care platform (TechNexus VU 14-day sprint).
 - **Day 2** — real doctors from the database (join `doctors` + `users`) ✓
 - **Day 3** — Groq AI classifier picks the specialist; keyword map is the fallback ✓
 - **Day 4** — urgency scored from symptoms (red flag → high) ✓
+- **Day 5** — real availability windows + filter by preferred day ✓
 
 ## How it works
 1. **Specialist** is chosen by a Groq LLM reading the free-text symptoms,
@@ -109,12 +110,18 @@ Heuristic triage to route patients faster, not a diagnosis. Errs toward
 caution — a false "high" is safe, a missed one is not. Optional `duration`
 in the request (e.g. `"5 days"`) feeds the scoring.
 
-## Known placeholders (built on later days)
-- `availability` is `"Not set"` — the real schedule window lands on **Day 5**
-  via the `doctor_availability` table.
+## Availability (Day 5)
+Each doctor's `availability` now shows their real schedule from the
+`doctor_availability` table, e.g. `"Mon 09:00-13:00, Wed 09:00-13:00"`.
+Pass an optional `preferredDay` in the request to return only doctors bookable
+that weekday:
+```json
+{ "symptoms": ["chest pain"], "preferredDay": "Tuesday" }
+```
+If nobody works that day, `doctors` is `[]` with a note suggesting another day.
+A doctor with no schedule rows still shows `"Not set"`.
 
 ## Roadmap
-- **Day 5** — availability matching via `doctor_availability`
 - **Day 6** — Service Recommender (Home Health / Palliative / Hospice)
 - **Day 7** — edge cases + Postman suite + handover
 

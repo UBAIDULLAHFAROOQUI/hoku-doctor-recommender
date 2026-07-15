@@ -1,12 +1,12 @@
 """
 AI Doctor Recommender — core logic.  (Ubaid Ullah Farooqui)
 
-Day 4: urgency is now scored from the symptoms (red flag -> high) instead of
-a fixed placeholder. Specialist still comes from the AI classifier (Day 3)
-with the keyword map as fallback; doctors still come from the DB (Day 2).
+Day 5: doctors now carry their real availability window, and an optional
+preferred_day filters to doctors bookable that weekday. Specialist from the AI
+classifier (Day 3), urgency from the scorer (Day 4), doctors from the DB (Day 2).
 
 Roadmap:
-  Day 5  -> real availability window from doctor_availability
+  Day 6  -> Service Recommender (Home Health / Palliative / Hospice)
 """
 
 from __future__ import annotations
@@ -81,20 +81,26 @@ def match_specialist(symptoms: list[str]) -> tuple[str, str]:
     return keyword_match(symptoms), "keyword"
 
 
-def find_doctors(specialist: str) -> tuple[list[dict], str]:
+def find_doctors(
+    specialist: str,
+    preferred_day: str | None = None,
+) -> tuple[list[dict], str]:
     """
-    Fetch real doctors for a specialist from the database.
+    Fetch real doctors for a specialist from the database, optionally filtered
+    to those bookable on preferred_day.
 
     Returns (doctors, note). `note` explains an empty list to the patient.
     We NEVER invent a doctor to fill an empty result.
     """
     try:
-        doctors = get_doctors_by_specialty(specialist)
+        doctors = get_doctors_by_specialty(specialist, preferred_day=preferred_day)
     except Exception as exc:  # DB down / not yet reachable
         logger.warning("Doctor DB unavailable (%s): %s", specialist, exc)
         return [], "Doctor directory is temporarily unavailable. Please try again shortly."
 
     if not doctors:
+        if preferred_day:
+            return [], f"No {specialist} is available on {preferred_day}. Try another day."
         return [], f"No {specialist} is currently available. Please check back soon."
     return doctors, ""
 
@@ -103,10 +109,11 @@ def recommend(
     symptoms: list[str],
     location: str | None = None,
     duration: str | None = None,
+    preferred_day: str | None = None,
 ) -> dict:
     """Build the full recommendation response (brief §10.4)."""
     specialist, method = match_specialist(symptoms)
-    doctors, note = find_doctors(specialist)
+    doctors, note = find_doctors(specialist, preferred_day)
     urgency_level, urgency_message = score_urgency(symptoms, duration)
     return {
         "recommendedSpecialist": specialist,

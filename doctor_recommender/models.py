@@ -12,7 +12,7 @@ testing before Talha's PostgreSQL is reachable.
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, Numeric, String, Time
 from sqlalchemy.orm import relationship
 
 from shared.db import Base
@@ -40,3 +40,14 @@ class Doctor(Base):
 
     # Lets us reach the doctor's name via doctors.user.full_name
     user = relationship("User")
+
+
+class DoctorAvailability(Base):
+    __tablename__ = "doctor_availability"
+
+    id = Column(Integer, primary_key=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.id"))
+    day_of_week = Column(String(20))  # Monday, Tuesday, ...
+    start_time = Column(Time)
+    end_time = Column(Time)
+    is_available = Column(Boolean, default=True)

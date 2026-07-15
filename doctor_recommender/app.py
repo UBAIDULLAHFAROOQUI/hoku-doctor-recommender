@@ -22,7 +22,7 @@ from doctor_recommender.recommender import recommend
 
 app = FastAPI(
     title="Hoku Health Care — AI Doctor Recommender",
-    version="0.4.0 (Day 4)",
+    version="0.5.0 (Day 5)",
     description="Recommends a specialist and real doctors from patient symptoms.",
 )
 
@@ -54,6 +54,11 @@ class RecommendRequest(BaseModel):
         examples=["3 days"],
         description="Optional: how long symptoms have lasted, e.g. '5 days'.",
     )
+    preferredDay: str | None = Field(
+        default=None,
+        examples=["Monday"],
+        description="Optional: only return doctors available this weekday.",
+    )
 
 
 class DoctorCard(BaseModel):
@@ -79,7 +84,7 @@ class RecommendResponse(BaseModel):
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     """Liveness probe."""
-    return {"status": "ok", "service": "doctor_recommender", "day": 4}
+    return {"status": "ok", "service": "doctor_recommender", "day": 5}
 
 
 @app.post("/api/ai/recommend-doctor", response_model=RecommendResponse, tags=["ai"])
@@ -90,5 +95,7 @@ def recommend_doctor(payload: RecommendRequest) -> RecommendResponse:
     Returns an empty `doctors` list with an explanatory `note` when no matching
     doctor exists or the directory is unavailable — never a fabricated doctor.
     """
-    result = recommend(payload.symptoms, payload.location, payload.duration)
+    result = recommend(
+        payload.symptoms, payload.location, payload.duration, payload.preferredDay
+    )
     return RecommendResponse(**result)
