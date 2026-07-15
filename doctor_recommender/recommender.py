@@ -1,12 +1,11 @@
 """
 AI Doctor Recommender — core logic.  (Ubaid Ullah Farooqui)
 
-Day 3: match_specialist() now asks the OpenAI classifier FIRST, then falls
-back to the Day 2 keyword map when the AI is unavailable or off-list. The DB
-(Day 2) still supplies the actual doctors.
+Day 4: urgency is now scored from the symptoms (red flag -> high) instead of
+a fixed placeholder. Specialist still comes from the AI classifier (Day 3)
+with the keyword map as fallback; doctors still come from the DB (Day 2).
 
 Roadmap:
-  Day 4  -> urgency scoring from red-flag symptoms
   Day 5  -> real availability window from doctor_availability
 """
 
@@ -16,6 +15,7 @@ import logging
 
 from doctor_recommender.classifier import classify_with_ai
 from doctor_recommender.repository import get_doctors_by_specialty
+from doctor_recommender.urgency import score_urgency
 
 logger = logging.getLogger("doctor_recommender")
 
@@ -99,16 +99,21 @@ def find_doctors(specialist: str) -> tuple[list[dict], str]:
     return doctors, ""
 
 
-def recommend(symptoms: list[str], location: str | None = None) -> dict:
+def recommend(
+    symptoms: list[str],
+    location: str | None = None,
+    duration: str | None = None,
+) -> dict:
     """Build the full recommendation response (brief §10.4)."""
     specialist, method = match_specialist(symptoms)
     doctors, note = find_doctors(specialist)
+    urgency_level, urgency_message = score_urgency(symptoms, duration)
     return {
         "recommendedSpecialist": specialist,
         "matchedBy": method,  # "ai" or "keyword"
         "doctors": doctors,
         "note": note,  # empty string when doctors were found
-        # Placeholder until Day 4 urgency scoring:
-        "urgency": "medium - Please book an appointment soon",
+        "urgencyLevel": urgency_level,       # "low" | "medium" | "high"
+        "urgency": urgency_message,          # human-readable, e.g. "high - ..."
         "disclaimer": "Please consult a doctor for proper diagnosis.",
     }

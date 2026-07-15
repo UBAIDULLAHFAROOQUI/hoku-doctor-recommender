@@ -7,6 +7,7 @@ Part of the Hoku Health Care platform (TechNexus VU 14-day sprint).
 - **Day 1** — static symptom → specialist map + stubbed endpoint ✓
 - **Day 2** — real doctors from the database (join `doctors` + `users`) ✓
 - **Day 3** — Groq AI classifier picks the specialist; keyword map is the fallback ✓
+- **Day 4** — urgency scored from symptoms (red flag → high) ✓
 
 ## How it works
 1. **Specialist** is chosen by a Groq LLM reading the free-text symptoms,
@@ -75,7 +76,8 @@ Response:
       "hospital": "Hoku Health Care", "availability": "Not set" }
   ],
   "note": "",
-  "urgency": "medium - Please book an appointment soon",
+  "urgencyLevel": "high",
+  "urgency": "high - Please see a doctor immediately",
   "disclaimer": "Please consult a doctor for proper diagnosis."
 }
 ```
@@ -96,14 +98,22 @@ owns and migrates those tables.
 - **Never a 500.** DB down or AI down → the endpoint still returns 200 with a
   safe fallback.
 
+## Urgency scoring (Day 4)
+`urgencyLevel` is `"low"` | `"medium"` | `"high"`, scored from the symptoms:
+- **high** — red flags (chest pain, trouble breathing, severe bleeding,
+  fainting, stroke signs, …) → "see a doctor immediately"
+- **medium** — moderate concerns, 3+ symptoms, or symptoms lasting 7+ days
+- **low** — otherwise
+
+Heuristic triage to route patients faster, not a diagnosis. Errs toward
+caution — a false "high" is safe, a missed one is not. Optional `duration`
+in the request (e.g. `"5 days"`) feeds the scoring.
+
 ## Known placeholders (built on later days)
-- `urgency` is currently a fixed `"medium ..."` string — real red-flag scoring
-  lands on **Day 4**.
 - `availability` is `"Not set"` — the real schedule window lands on **Day 5**
   via the `doctor_availability` table.
 
 ## Roadmap
-- **Day 4** — red-flag urgency scoring (low / medium / high)
 - **Day 5** — availability matching via `doctor_availability`
 - **Day 6** — Service Recommender (Home Health / Palliative / Hospice)
 - **Day 7** — edge cases + Postman suite + handover
