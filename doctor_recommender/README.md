@@ -9,6 +9,7 @@ Part of the Hoku Health Care platform (TechNexus VU 14-day sprint).
 - **Day 3** — Groq AI classifier picks the specialist; keyword map is the fallback ✓
 - **Day 4** — urgency scored from symptoms (red flag → high) ✓
 - **Day 5** — real availability windows + filter by preferred day ✓
+- **Day 6** — service recommender (Home Health / Palliative / Hospice) ✓
 
 ## How it works
 1. **Specialist** is chosen by a Groq LLM reading the free-text symptoms,
@@ -77,6 +78,7 @@ Response:
       "hospital": "Hoku Health Care", "availability": "Not set" }
   ],
   "note": "",
+  "recommendedService": { "serviceId": 1, "name": "Home Health", "price": 2000.0, "matchedBy": "ai" },
   "urgencyLevel": "high",
   "urgency": "high - Please see a doctor immediately",
   "disclaimer": "Please consult a doctor for proper diagnosis."
@@ -122,7 +124,6 @@ If nobody works that day, `doctors` is `[]` with a note suggesting another day.
 A doctor with no schedule rows still shows `"Not set"`.
 
 ## Roadmap
-- **Day 6** — Service Recommender (Home Health / Palliative / Hospice)
 - **Day 7** — edge cases + Postman suite + handover
 
 ## Note for Talha

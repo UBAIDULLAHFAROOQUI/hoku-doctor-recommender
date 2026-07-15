@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
-from doctor_recommender.models import Doctor, DoctorAvailability, User
+from doctor_recommender.models import Doctor, DoctorAvailability, Service, User
 from shared.db import SessionLocal
 
 HOSPITAL_NAME = "Hoku Health Care"
@@ -114,3 +114,21 @@ def get_doctors_by_specialty(
                     continue  # not bookable that day -> skip
             cards.append(_to_card(doctor, user, slots))
         return cards
+
+
+def get_service_by_name(name: str) -> dict | None:
+    """
+    Look up an active service by name. Returns {serviceId, name, price} or None
+    if no such service row exists. Never invents a service.
+    """
+    with SessionLocal() as session:
+        service = session.execute(
+            select(Service).where(
+                Service.name == name,
+                Service.is_active.is_(True),
+            )
+        ).scalar_one_or_none()
+        if service is None:
+            return None
+        price = float(service.price) if service.price is not None else None
+        return {"serviceId": service.id, "name": service.name, "price": price}

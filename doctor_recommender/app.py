@@ -22,7 +22,7 @@ from doctor_recommender.recommender import recommend
 
 app = FastAPI(
     title="Hoku Health Care — AI Doctor Recommender",
-    version="0.5.0 (Day 5)",
+    version="0.6.0 (Day 6)",
     description="Recommends a specialist and real doctors from patient symptoms.",
 )
 
@@ -71,11 +71,19 @@ class DoctorCard(BaseModel):
     availability: str
 
 
+class RecommendedService(BaseModel):
+    serviceId: int | None = None
+    name: str
+    price: float | None = None
+    matchedBy: str  # "ai" or "keyword"
+
+
 class RecommendResponse(BaseModel):
     recommendedSpecialist: str
     matchedBy: str  # "ai" or "keyword"
     doctors: list[DoctorCard]
     note: str
+    recommendedService: RecommendedService
     urgencyLevel: str  # "low" | "medium" | "high"
     urgency: str
     disclaimer: str
@@ -84,7 +92,7 @@ class RecommendResponse(BaseModel):
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     """Liveness probe."""
-    return {"status": "ok", "service": "doctor_recommender", "day": 5}
+    return {"status": "ok", "service": "doctor_recommender", "day": 6}
 
 
 @app.post("/api/ai/recommend-doctor", response_model=RecommendResponse, tags=["ai"])

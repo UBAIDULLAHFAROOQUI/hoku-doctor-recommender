@@ -12,7 +12,7 @@ testing before Talha's PostgreSQL is reachable.
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, Numeric, String, Time
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, Numeric, String, Text, Time
 from sqlalchemy.orm import relationship
 
 from shared.db import Base
@@ -51,3 +51,13 @@ class DoctorAvailability(Base):
     start_time = Column(Time)
     end_time = Column(Time)
     is_available = Column(Boolean, default=True)
+
+
+class Service(Base):
+    __tablename__ = "services"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text)
+    price = Column(Numeric(10, 2))
+    is_active = Column(Boolean, default=True)

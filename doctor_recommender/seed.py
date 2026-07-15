@@ -17,7 +17,7 @@ import datetime as dt
 
 from sqlalchemy import select
 
-from doctor_recommender.models import Doctor, DoctorAvailability, User
+from doctor_recommender.models import Doctor, DoctorAvailability, Service, User
 from shared.db import Base, SessionLocal, engine
 
 # (full_name, email, specialty, experience_years, qualification, fee)
@@ -43,6 +43,14 @@ SCHEDULES = {
     "usman.tariq@hoku.pk": [("Monday", (9, 0), (17, 0)), ("Thursday", (9, 0), (17, 0))],
     "sana.malik@hoku.pk":  [("Monday", (9, 0), (13, 0)), ("Tuesday", (9, 0), (13, 0)), ("Wednesday", (9, 0), (13, 0)), ("Thursday", (9, 0), (13, 0)), ("Friday", (9, 0), (13, 0))],
 }
+
+
+# (name, description, price)
+SERVICES = [
+    ("Home Health", "Nursing, therapy and medical care at home.", 2000),
+    ("Palliative Care", "Comfort care for serious or chronic illnesses.", 5000),
+    ("Hospice Care", "End-of-life care and family support.", 6000),
+]
 
 
 def run() -> None:
@@ -89,6 +97,15 @@ def run() -> None:
             print(f"Seeded {count} availability slots.")
         else:
             print("Availability already seeded — skipping.")
+
+        # --- services ---
+        if session.query(Service).count() == 0:
+            for name, desc, price in SERVICES:
+                session.add(Service(name=name, description=desc, price=price, is_active=True))
+            session.commit()
+            print(f"Seeded {len(SERVICES)} services.")
+        else:
+            print("Services already seeded — skipping.")
 
 
 if __name__ == "__main__":

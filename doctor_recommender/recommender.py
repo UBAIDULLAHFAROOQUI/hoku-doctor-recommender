@@ -1,12 +1,12 @@
 """
 AI Doctor Recommender — core logic.  (Ubaid Ullah Farooqui)
 
-Day 5: doctors now carry their real availability window, and an optional
-preferred_day filters to doctors bookable that weekday. Specialist from the AI
-classifier (Day 3), urgency from the scorer (Day 4), doctors from the DB (Day 2).
+Day 6: also recommends a care type (Home Health / Palliative / Hospice) with
+its real service_id from the DB, so the frontend can deep-link to booking.
+Builds on: specialist (Day 3), urgency (Day 4), availability (Day 5).
 
 Roadmap:
-  Day 6  -> Service Recommender (Home Health / Palliative / Hospice)
+  Day 7  -> edge cases, Postman suite, handover
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 
 from doctor_recommender.classifier import classify_with_ai
-from doctor_recommender.repository import get_doctors_by_specialty
+from doctor_recommender.repository import get_doctors_by_specialty, get_service_by_name
+from doctor_recommender.service_recommender import classify_service
 from doctor_recommender.urgency import score_urgency
 
 logger = logging.getLogger("doctor_recommender")
@@ -115,11 +116,28 @@ def recommend(
     specialist, method = match_specialist(symptoms)
     doctors, note = find_doctors(specialist, preferred_day)
     urgency_level, urgency_message = score_urgency(symptoms, duration)
+
+    # Care-type recommendation (Day 6). The name is a classification; the
+    # serviceId is only filled when a real matching service row exists.
+    service_name, service_method = classify_service(symptoms)
+    service_row = None
+    try:
+        service_row = get_service_by_name(service_name)
+    except Exception as exc:  # DB down -> still return the classified name
+        logger.warning("Service lookup failed (%s): %s", service_name, exc)
+    recommended_service = {
+        "serviceId": service_row["serviceId"] if service_row else None,
+        "name": service_name,
+        "price": service_row["price"] if service_row else None,
+        "matchedBy": service_method,
+    }
+
     return {
         "recommendedSpecialist": specialist,
         "matchedBy": method,  # "ai" or "keyword"
         "doctors": doctors,
         "note": note,  # empty string when doctors were found
+        "recommendedService": recommended_service,
         "urgencyLevel": urgency_level,       # "low" | "medium" | "high"
         "urgency": urgency_message,          # human-readable, e.g. "high - ..."
         "disclaimer": "Please consult a doctor for proper diagnosis.",
