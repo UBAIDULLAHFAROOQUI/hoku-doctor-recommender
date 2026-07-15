@@ -1,12 +1,11 @@
 """
 AI Doctor Recommender — core logic.  (Ubaid Ullah Farooqui)
 
-Day 2: find_doctors() now queries the REAL `doctors` table via the repository.
-The static symptom->specialist map still decides WHICH specialist; the DB
-decides WHICH doctors of that specialist to return.
+Day 3: match_specialist() now asks the OpenAI classifier FIRST, then falls
+back to the Day 2 keyword map when the AI is unavailable or off-list. The DB
+(Day 2) still supplies the actual doctors.
 
 Roadmap:
-  Day 3  -> replace the map with an OpenAI classifier (map = fallback)
   Day 4  -> urgency scoring from red-flag symptoms
   Day 5  -> real availability window from doctor_availability
 """
@@ -15,6 +14,7 @@ from __future__ import annotations
 
 import logging
 
+from doctor_recommender.classifier import classify_with_ai
 from doctor_recommender.repository import get_doctors_by_specialty
 
 logger = logging.getLogger("doctor_recommender")
@@ -22,8 +22,9 @@ logger = logging.getLogger("doctor_recommender")
 # The six specialties that exist in Hoku's `doctors` table (brief §1.2).
 FALLBACK_SPECIALIST = "General Physician"
 
-# Static symptom -> specialist map. Keys are lowercase keywords matched inside
-# each symptom string, so "bad chest pain" still matches "chest pain".
+# Static symptom -> specialist map. Now the FALLBACK when the AI is unavailable.
+# Keys are lowercase keywords matched inside each symptom string, so
+# "bad chest pain" still matches "chest pain".
 SYMPTOM_SPECIALTY_MAP: dict[str, str] = {
     # Cardiologist
     "chest pain": "Cardiologist",
@@ -58,8 +59,8 @@ SYMPTOM_SPECIALTY_MAP: dict[str, str] = {
 }
 
 
-def match_specialist(symptoms: list[str]) -> str:
-    """Return the best-matching specialist, falling back to General Physician."""
+def keyword_match(symptoms: list[str]) -> str:
+    """Fallback matcher: scan symptoms for a mapped keyword."""
     for symptom in symptoms:
         text = symptom.strip().lower()
         for keyword, specialist in SYMPTOM_SPECIALTY_MAP.items():
@@ -68,13 +69,23 @@ def match_specialist(symptoms: list[str]) -> str:
     return FALLBACK_SPECIALIST
 
 
+def match_specialist(symptoms: list[str]) -> tuple[str, str]:
+    """
+    Return (specialist, method). Tries the AI classifier first; if it is
+    unavailable or returns something off-list, falls back to the keyword map.
+    method is "ai" or "keyword" — handy for demos and debugging.
+    """
+    ai_specialist = classify_with_ai(symptoms)
+    if ai_specialist:
+        return ai_specialist, "ai"
+    return keyword_match(symptoms), "keyword"
+
+
 def find_doctors(specialist: str) -> tuple[list[dict], str]:
     """
     Fetch real doctors for a specialist from the database.
 
-    Returns (doctors, note). `note` explains an empty list to the patient:
-      - DB reachable but no match   -> "no doctor currently available"
-      - DB unreachable (dev/outage) -> service-unavailable message
+    Returns (doctors, note). `note` explains an empty list to the patient.
     We NEVER invent a doctor to fill an empty result.
     """
     try:
@@ -90,10 +101,11 @@ def find_doctors(specialist: str) -> tuple[list[dict], str]:
 
 def recommend(symptoms: list[str], location: str | None = None) -> dict:
     """Build the full recommendation response (brief §10.4)."""
-    specialist = match_specialist(symptoms)
+    specialist, method = match_specialist(symptoms)
     doctors, note = find_doctors(specialist)
     return {
         "recommendedSpecialist": specialist,
+        "matchedBy": method,  # "ai" or "keyword"
         "doctors": doctors,
         "note": note,  # empty string when doctors were found
         # Placeholder until Day 4 urgency scoring:

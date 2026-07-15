@@ -1,9 +1,8 @@
 """
 Shared configuration for all Hoku Health Care AI modules.
 
-Reads from a single .env at the hoku-health-ai/ root so the chatbot,
-symptom checker, doctor recommender and sentiment modules all point at
-the SAME PostgreSQL that Talha's backend uses. Do not hardcode secrets.
+Reads from a single .env at the hoku-health-ai/ root. Secrets are NEVER
+hardcoded — put them in .env (which is gitignored).
 """
 
 import os
@@ -20,16 +19,18 @@ except ImportError:
 class Settings:
     """Central settings object. Import `settings` from this module."""
 
-    # --- OpenAI (used from Day 3 onward, declared now so config is stable) ---
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    # --- Groq (OpenAI-compatible, free tier) ---
+    # Groq uses the OpenAI SDK pointed at Groq's servers. Key starts with "gsk_".
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
 
-    # --- Database (used from Day 2 onward) ---
-    # MUST match the DATABASE_URL in Talha's hoku-health-backend/.env,
-    # otherwise recommender queries hit a different `doctors` table than prod.
+    # --- Database ---
+    # For local dev: sqlite:///./hoku_local.db
+    # For production: Talha's PostgreSQL URL from hoku-health-backend/.env
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL",
-        "postgresql://postgres:postgres@localhost:5432/hoku_health",
+        "sqlite:///./hoku_local.db",
     )
 
     # --- Service behaviour ---

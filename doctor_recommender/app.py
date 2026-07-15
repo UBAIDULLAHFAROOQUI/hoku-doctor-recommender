@@ -1,9 +1,10 @@
 """
 AI Doctor Recommender — FastAPI service.  (Ubaid Ullah Farooqui)
 
-Day 2: POST /api/ai/recommend-doctor now returns REAL doctors from the
-database (name, doctorId, specialty, experience, consultationFee). A `note`
-field explains an empty doctor list instead of inventing a doctor.
+Day 3: the specialist is chosen by an OpenAI classifier (constrained to the
+six real specialties), falling back to the Day 2 keyword map when the AI is
+unavailable. `matchedBy` reports which path was used. Doctors still come from
+the database; an empty list is explained by `note`, never a fabricated doctor.
 
 Run locally:
     uvicorn doctor_recommender.app:app --reload --port 8010
@@ -21,7 +22,7 @@ from doctor_recommender.recommender import recommend
 
 app = FastAPI(
     title="Hoku Health Care — AI Doctor Recommender",
-    version="0.2.0 (Day 2)",
+    version="0.3.0 (Day 3)",
     description="Recommends a specialist and real doctors from patient symptoms.",
 )
 
@@ -62,6 +63,7 @@ class DoctorCard(BaseModel):
 
 class RecommendResponse(BaseModel):
     recommendedSpecialist: str
+    matchedBy: str  # "ai" or "keyword"
     doctors: list[DoctorCard]
     note: str
     urgency: str
@@ -71,7 +73,7 @@ class RecommendResponse(BaseModel):
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     """Liveness probe."""
-    return {"status": "ok", "service": "doctor_recommender", "day": 2}
+    return {"status": "ok", "service": "doctor_recommender", "day": 3}
 
 
 @app.post("/api/ai/recommend-doctor", response_model=RecommendResponse, tags=["ai"])
