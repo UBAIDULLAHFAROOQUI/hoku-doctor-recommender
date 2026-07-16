@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 hoku_local.db
+.pytest_cache/
