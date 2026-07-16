@@ -1,0 +1,97 @@
+{
+  "info": {
+    "name": "Hoku - AI Doctor Recommender",
+    "description": "Test collection for the AI Doctor Recommender API (Ubaid Ullah Farooqui). Base URL assumes local run at http://127.0.0.1:8010",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8010" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Chest pain (high urgency, Cardiologist)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"chest pain\", \"shortness of breath\"]\n}" }
+      }
+    },
+    {
+      "name": "Skin rash (Dermatologist)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"a weird patch on my skin that keeps itching\"]\n}" }
+      }
+    },
+    {
+      "name": "Newborn warm & crying (Child Specialist, AI-only)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"my newborn keeps crying and feels very warm\"]\n}" }
+      }
+    },
+    {
+      "name": "Filter by preferred day (Tuesday)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"chest pain\"],\n  \"preferredDay\": \"Tuesday\"\n}" }
+      }
+    },
+    {
+      "name": "Duration bumps urgency (sore throat 10 days)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"sore throat\"],\n  \"duration\": \"10 days\"\n}" }
+      }
+    },
+    {
+      "name": "Palliative Care (advanced cancer)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"advanced cancer, needs comfort care\"]\n}" }
+      }
+    },
+    {
+      "name": "Hospice Care (end of life)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"terminal illness, end of life care\"]\n}" }
+      }
+    },
+    {
+      "name": "Edge: empty symptoms (expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": []\n}" }
+      }
+    },
+    {
+      "name": "Edge: blank symptoms (expect 422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/ai/recommend-doctor",
+        "body": { "mode": "raw", "raw": "{\n  \"symptoms\": [\"\", \"   \"]\n}" }
+      }
+    }
+  ]
+}

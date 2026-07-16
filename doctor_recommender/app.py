@@ -16,13 +16,13 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, field_validator
 
 from doctor_recommender.recommender import recommend
 
 app = FastAPI(
     title="Hoku Health Care — AI Doctor Recommender",
-    version="0.6.0 (Day 6)",
+    version="1.0.0 (Day 7)",
     description="Recommends a specialist and real doctors from patient symptoms.",
 )
 
@@ -60,6 +60,22 @@ class RecommendRequest(BaseModel):
         description="Optional: only return doctors available this weekday.",
     )
 
+    @field_validator("symptoms")
+    @classmethod
+    def clean_symptoms(cls, value: list[str]) -> list[str]:
+        """Drop blank/whitespace symptoms, dedupe, cap at 20. Reject all-blank."""
+        seen: set[str] = set()
+        cleaned: list[str] = []
+        for s in value:
+            t = (s or "").strip()
+            key = t.lower()
+            if t and key not in seen:
+                seen.add(key)
+                cleaned.append(t)
+        if not cleaned:
+            raise ValueError("Provide at least one non-empty symptom.")
+        return [s[:200] for s in cleaned[:20]]  # cap count and length
+
 
 class DoctorCard(BaseModel):
     doctorId: int
@@ -92,7 +108,7 @@ class RecommendResponse(BaseModel):
 @app.get("/health", tags=["meta"])
 def health() -> dict:
     """Liveness probe."""
-    return {"status": "ok", "service": "doctor_recommender", "day": 6}
+    return {"status": "ok", "service": "doctor_recommender", "day": 7}
 
 
 @app.post("/api/ai/recommend-doctor", response_model=RecommendResponse, tags=["ai"])
